@@ -1,7 +1,5 @@
 from pyppeteer import launch
 from pyppeteer.errors import TimeoutError
-from tkinter import Tk
-from tkinter.simpledialog import askstring
 import json
 import asyncio
 import time
