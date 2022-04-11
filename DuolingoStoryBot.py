@@ -17,15 +17,11 @@ def getLogin():
         
     except FileNotFoundError:
         loginFile = open(loginPath, 'w')
-        root = Tk()
-        root.withdraw() # hide main window
         
         login = {}
-        login['user'] = askstring("Login", 'Duolingo Username: ')
-        login['pass'] = askstring("Login", 'Duolingo Password')
-        
-        root.destroy()
-        
+        login['user'] = input('Duolingo Username: ')
+        login['pass'] = input('Duolingo Password: ')
+
         loginJson = json.dumps(login)
         loginFile.write(loginJson)
         
@@ -219,7 +215,22 @@ async def storyComplete():
 async def main():
     global browser
     global page
-    browser = await launch(headless=False, args=['--start-maximized', '--mute-audio'])
+    headlessInput = input('Run in background? (y/n): ')
+    if headlessInput.lower() == 'y':
+        headless = True
+    elif headlessInput.lower() == 'n':
+        headless = False
+    else:
+        headless = None
+    while headless == None:
+        headlessInput = input('Invalid input. Run in background? (y/n): ')
+        if headlessInput.lower() == 'y':
+            headless = True
+        elif headlessInput.lower() == 'n':
+            headless = False
+        else:
+            headless = None
+    browser = await launch(headless=headless, args=['--mute-audio'])
     page = await browser.newPage()
     await page.goto(duoUrl)
 
