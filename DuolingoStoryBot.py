@@ -7,7 +7,7 @@ import time
 duoUrl = 'https://www.duolingo.com'
 
 def getLogin():
-    loginPath = 'Assets/login.txt'
+    loginPath = 'Assets/login.json'
     try:
         loginFile = open(loginPath, 'r')
         login = loginFile.readlines()[0]
