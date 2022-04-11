@@ -26,25 +26,21 @@ def getLogin():
     return login['user'], login['pass']
         
 async def login():
-    userSelector = '#overlays > div:nth-child(5) > div > div > form > div:nth-child(1) > div._3jeu0 > div:nth-child(1) > label > div > input'
-    passSelector = '#overlays > div:nth-child(5) > div > div > form > div:nth-child(1) > div._3jeu0 > div:nth-child(2) > label > div._2rjZr > input'
-    duoSubmit = '#overlays > div:nth-child(5) > div > div > form > div:nth-child(1) > button'
+    userSelector = 'input[data-test="email-input"]'
+    passSelector = 'input[data-test="password-input"]'
+    duoSubmit = 'button[data-test="register-button"]'
     loginSelector = '#root > div > div > span:nth-child(2) > div > div._18cH1 > div._3wkBv > div._3uMJF > button'
     
-    await asyncio.wait([
-        page.click(loginSelector),
-        page.waitForNavigation(),
-    ])
+    await page.click(loginSelector)
+    await page.waitForSelector(userSelector)
 
     duoUser, duoPass = getLogin()
     
     await page.type(userSelector, duoUser)
     await page.type(passSelector, duoPass)
     
-    await asyncio.wait([
-        page.click(duoSubmit),
-        page.waitForNavigation(),
-    ])
+    await page.click(duoSubmit)
+    await page.waitForSelector('div[data-test="skill"]')
     
 async def storySelect():
     storiesInitial = '#root > div > div._1kJpR._3g2C1 > div._1bdcY > div:nth-child(3) > a > span'
@@ -54,10 +50,7 @@ async def storySelect():
     noThanks = 'button[data-test="notification-drawer-no-thanks-button"]'
     with open('Assets/select.js') as script:
         executeBase = str(script.read())
-    await asyncio.wait([
-        page.goto(duoUrl + '/stories'),
-        page.waitForNavigation(),
-    ])
+    await page.goto(duoUrl + '/stories'),
 
     for Set in range(2, 71, 1):
         for story in range(2, 6, 1):
@@ -188,27 +181,27 @@ async def storyComplete():
     try:
         await page.waitForSelector(finalSelector, {'timeout': 4000})
         await waitForEnabled(finalSelector)
-        await asyncio.wait([
+        await asyncio.gather(
             page.goto('https://www.duolingo.com/stories'),
             page.waitForNavigation(),
-        ])
+        )
     except:
         await page.waitForSelector(altFinal, {'timeout': 4000})
         await waitForEnabled(altFinal)
-        await asyncio.wait([
+        await asyncio.gather(
             page.click(altFinal),
             page.waitForNavigation(),
-        ])
+        )
     try:
         storyXpath = '//*[@id="root"]/div/div[4]/div/div/div[2]/div/div[1]/div[2]/div[2]/div[1]/div[1]/div/img'
         await page.waitForXPath(storyXpath, {'timeout': 5000})
     except:
         await page.waitForSelector(finalSelector, {'timeout': 4000})
         await waitForEnabled(finalSelector)
-        await asyncio.wait([
+        await asyncio.gather(
             page.goto('https://www.duolingo.com/stories'),
             page.waitForNavigation(),
-        ])
+        )
       
 async def main():
     global browser
