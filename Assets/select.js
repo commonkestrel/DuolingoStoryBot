@@ -12,11 +12,12 @@
     const storyXpath = storyBase.replace('Set', set).replace('story', story);
     const storyClick = storyClickBase.replace('Set', set).replace('story', story);
     const xpXpath = xpBase.replace('Set', set).replace('story', story);
+    const xpValue = parseInt(getElementByXpath(xpXpath).textContent);
 
-    if (parseInt(getElementByXpath(xpXpath).textContent) > 0) {
+    if (xpValue > 0) {
         getElementByXpath(storyXpath).click();
         getElementByXpath(storyClick).click();
-        return 0
+        return xpValue
     }
-    else {return 1}
+    else {return xpValue}
 }

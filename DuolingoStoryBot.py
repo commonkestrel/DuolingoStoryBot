@@ -1,8 +1,8 @@
 from pyppeteer import launch
-from pyppeteer.errors import TimeoutError
 import json
 import asyncio
 import time
+import sys
 
 duoUrl = 'https://www.duolingo.com'
 
@@ -42,7 +42,7 @@ async def login():
     await page.click(duoSubmit)
     await page.waitForSelector('div[data-test="skill"]')
     
-async def storySelect():
+async def storySelect(maxXp):
     storiesInitial = '#root > div > div._1kJpR._3g2C1 > div._1bdcY > div:nth-child(3) > a > span'
     storiesBase = '//*[@id="root"]/div/div[4]/div/div/div[2]/div/div[1]/div[Set]/div[story]'
     storiesClickBase = '//*[@id="root"]/div/div[4]/div/div/div[2]/div/div[1]/div[Set]/div[story]/div[2]/div/div[1]/a[1]'
@@ -52,6 +52,7 @@ async def storySelect():
         executeBase = str(script.read())
     await page.goto(duoUrl + '/stories'),
 
+    earnedXp = 0
     for Set in range(2, 71, 1):
         for story in range(2, 6, 1):
             storyXpath = '//*[@id="root"]/div/div[4]/div/div/div[2]/div/div[1]/div[2]/div[2]/div[1]/div[1]/div/img'
@@ -59,10 +60,13 @@ async def storySelect():
             executeScript = executeBase.replace('set = replace', f'set = {Set}').replace('story = replace', f'story = {story}')
             click = await page.evaluate(executeScript)
             
-            if click == 1:
+            if click == 0:
                 continue
             
             await storyComplete()
+            earnedXp += click
+            if earnedXp > maxXp:
+                return
             
 async def waitForEnabled(selector, timeout=30):
     await page.waitForSelector(selector)
@@ -181,31 +185,23 @@ async def storyComplete():
     try:
         await page.waitForSelector(finalSelector, {'timeout': 4000})
         await waitForEnabled(finalSelector)
-        await asyncio.gather(
-            page.goto('https://www.duolingo.com/stories'),
-            page.waitForNavigation(),
-        )
+        await page.click(finalSelector)
     except:
         await page.waitForSelector(altFinal, {'timeout': 4000})
         await waitForEnabled(altFinal)
-        await asyncio.gather(
-            page.click(altFinal),
-            page.waitForNavigation(),
-        )
+        await page.click(altFinal)
     try:
-        storyXpath = '//*[@id="root"]/div/div[4]/div/div/div[2]/div/div[1]/div[2]/div[2]/div[1]/div[1]/div/img'
-        await page.waitForXPath(storyXpath, {'timeout': 5000})
+        await page.waitForXPath('//*[@id="root"]/div/div[4]/div/div/div[2]/div/div[1]/div[2]/div[2]/div[1]/div[1]/div/img', {'timeout': 10000})
     except:
         await page.waitForSelector(finalSelector, {'timeout': 4000})
         await waitForEnabled(finalSelector)
-        await asyncio.gather(
-            page.goto('https://www.duolingo.com/stories'),
-            page.waitForNavigation(),
-        )
+        await page.click(finalSelector)
       
 async def main():
     global browser
     global page
+    
+    #Get headless mode and check if it is valid
     headlessInput = input('Run in background? (y/n): ')
     if headlessInput.lower() == 'y':
         headless = True
@@ -221,14 +217,31 @@ async def main():
             headless = False
         else:
             headless = None
+
+    #Get maximum xp to earn and check if it is an integer
+    inputMaxXp = input("Xp amount to terminate after: ")
+    try:
+        maxXp = int(inputMaxXp)
+        maxSuccess = True
+    except:
+        maxSuccess = False
+    while not maxSuccess:
+        inputMaxXp = input("Must be an integer. Xp amount to terminate after: ")
+        try:
+            maxXp = int(inputMaxXp)
+            maxSuccess = True
+        except:
+            maxSuccess = False
+    
+    #Open browser and go to duolingo.com
     browser = await launch(headless=headless, args=['--mute-audio'])
     page = await browser.newPage()
     await page.goto(duoUrl)
 
     await login() #Login with provided credientials
-    await storySelect()
+    await storySelect(maxXp)
     
-    await browser.close()
+    await browser.close()#Close browser when done
     
 if __name__ == '__main__':
     asyncio.get_event_loop().run_until_complete(main())
