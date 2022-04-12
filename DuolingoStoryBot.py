@@ -65,7 +65,7 @@ async def storySelect(maxXp):
             
             await storyComplete()
             earnedXp += click
-            if earnedXp > maxXp:
+            if earnedXp >= maxXp:
                 return
             
 async def waitForEnabled(selector, timeout=30):
