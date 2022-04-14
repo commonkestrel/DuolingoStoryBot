@@ -2,7 +2,6 @@ from pyppeteer import launch
 import json
 import asyncio
 import time
-import sys
 
 duoUrl = 'https://www.duolingo.com'
 
@@ -20,8 +19,27 @@ def getLogin():
         login['user'] = input('Duolingo Username: ')
         login['pass'] = input('Duolingo Password: ')
 
-        loginJson = json.dumps(login)
-        loginFile.write(loginJson)
+        rememberInput = input('Remember login? (y/n): ')
+        if rememberInput.lower() == 'y':
+            remember = True
+        elif rememberInput.lower() == 'n':
+            remember = False
+        else:
+            remember = None
+        while remember == None:
+            rememberInput = input('Invalid input. Remember login? (y/n): ')
+            if rememberInput.lower() == 'y':
+                remember = True
+            elif rememberInput.lower() == 'n':
+                remember = False
+            else:
+                remember = None
+        
+        if remember:
+            loginJson = json.dumps(login)
+            loginFile.write(loginJson)
+        
+        loginFile.close()
         
     return login['user'], login['pass']
         
@@ -43,29 +61,25 @@ async def login():
     await page.waitForSelector('div[data-test="skill"]')
     
 async def storySelect(maxXp):
-    storiesInitial = '#root > div > div._1kJpR._3g2C1 > div._1bdcY > div:nth-child(3) > a > span'
-    storiesBase = '//*[@id="root"]/div/div[4]/div/div/div[2]/div/div[1]/div[Set]/div[story]'
-    storiesClickBase = '//*[@id="root"]/div/div[4]/div/div/div[2]/div/div[1]/div[Set]/div[story]/div[2]/div/div[1]/a[1]'
-    xpBase = '//*[@id="root"]/div/div[4]/div/div/div[2]/div/div[1]/div[Set]/div[story]/div[2]/div[2]'
-    noThanks = 'button[data-test="notification-drawer-no-thanks-button"]'
-    with open('Assets/select.js') as script:
-        executeBase = str(script.read())
+    with open('Assets/scripts.js') as script:
+        selectBase = ''.join(script.readlines()[1:24])
     await page.goto(duoUrl + '/stories'),
 
     earnedXp = 0
     for Set in range(2, 71, 1):
-        for story in range(2, 6, 1):
-            storyXpath = '//*[@id="root"]/div/div[4]/div/div/div[2]/div/div[1]/div[2]/div[2]/div[1]/div[1]/div/img'
-            await page.waitForXPath(storyXpath)
-            executeScript = executeBase.replace('set = replace', f'set = {Set}').replace('story = replace', f'story = {story}')
-            click = await page.evaluate(executeScript)
+        for Story in range(2, 6, 1):
+            firstXpath = '//*[@id="root"]/div/div[4]/div/div/div[2]/div/div[1]/div[2]/div[2]/div[1]/div[1]/div/img'
+            await page.waitForXPath(firstXpath)
+            selectScript = selectBase.format(set=Set, story=Story)
+            click = await page.evaluate(selectScript)
             
             if click == 0:
                 continue
             
             await storyComplete()
             earnedXp += click
-            if earnedXp >= maxXp:
+            if maxXp != 0 and earnedXp >= maxXp:
+                print(f'Successfully earned {earnedXp}')
                 return
             
 async def waitForEnabled(selector, timeout=30):
@@ -83,105 +97,58 @@ async def waitForEnabled(selector, timeout=30):
     return 0
             
 async def match():
+    global scripts
     for offset in range(5):
         for i in range(5):
             individualOffset = 5 + ((i + offset) % 5)
-            await page.evaluate(f'''() => {{
-                let tokens = document.querySelectorAll('button[data-test="challenge-tap-token"]');
-                for (let i=0; i < tokens.length; i++) {{
-                    if (tokens[i].classList.contains('pmjld')) {{
-                        tokens[i].click()
-                    }}
-                }}
-                if (!tokens[{i}].disabled && !tokens[{individualOffset}].disabled) {{
-                    tokens[{i}].click()
-                    tokens[{individualOffset}].click()
-                }}
-                }}''')
+            matchScript = ''.join(scripts[26:38]).format(offset=individualOffset, first=i)
+            await page.evaluate(matchScript)
         time.sleep(1)
         
             
 async def storyComplete():
+    global scripts
     continueSelector = '#root > div > div > div > div > div:nth-of-type(3) > div > div > div > button'
     writeExersize = 'Buenos diás, buenos diás, buenos diás, buenos diás, buenos diás, buenos diás, buenos diás.'
-    choiceSelector = 'button[data-test="stories-choice"]'
-    tapTokenSelector = 'button[data-test="challenge-tap-token"]'
     finalSelector = 'button[data-test="stories-player-done"]'
     altFinal = 'button[data-test="stories-player-continue"]'
-    pairCorrect = 'aria-disabled="true"'
     textSelector = 'textarea[placeholder="Type your response in Spanish!"]'
-    write = True
-    selectedClass = "button.classList.contains('pmjld')"
     await page.waitForSelector(continueSelector)
     
     while True:
         try:
-            disabled = await page.evaluate('''
-                        () => {
-                           continueButton = document.querySelector('#root > div > div > div > div > div:nth-of-type(3) > div > div > div > button')
-                           return continueButton.disabled
-                        }
-                        ''')
+            disabledScript = ''.join(scripts[40:44])
+            disabled = await page.evaluate(disabledScript)
             if disabled != 'true':
                 await page.click(continueSelector)
         except:
             break
         else:
-            await page.evaluate('''() => {
-            let choices = document.querySelectorAll('button[data-test="stories-choice"]');
-            if (choices != undefined && choices.length != 0) {
-                for (let i=0; i <= choices.length; i++) {
-                    try {
-                        choices[i].click();
-                        }
-                    catch (err) {
-                        break;
-                        }
-                    }
-                }
-            }''')
+            choiceScript = ''.join(scripts[57:70])
+            await page.evaluate(choiceScript)
             
-            checkWrite = await page.evaluate('''() => {
-                                            return document.querySelector('textarea[placeholder="Type your response in Spanish!"]') != null;
-                                            }''') == 'true'
+            lengthScript = ''.join(scripts[46:55])
+            tokensLength = await page.evaluate(lengthScript)
             
-            if write and checkWrite:
-                await page.type(textSelector, writeExersize)
-                write = False
-                
-            tokensLength = await page.evaluate('''() => {
-                let tokens = document.querySelectorAll('button[data-test="challenge-tap-token"]');
-                if (tokens != null) {
-                    return tokens.length;
-                }
-                else {
-                return 0;
-                } 
-            }''')
             if tokensLength == 10:
-                await match()
-                matched = await waitForEnabled(continueSelector, timeout=3)
+                matched = 1
                 while matched == 1:
                     await match()
                     matched = await waitForEnabled(continueSelector, timeout=3)
                 await page.click(continueSelector)
-                break
+                
+                try:
+                    await waitForEnabled(continueSelector, timeout=4)
+                    await page.click(continueSelector)
+                    await page.waitForSelector(textSelector, {'timeout': 4000}) #Check if there is a write excersize
+                    await page.type(textSelector, writeExersize)
+                except: #Exit main loop if no write excersize
+                    break
 
             elif tokensLength != 0:
-                await page.evaluate('''() => {
-                    let tokens = document.querySelectorAll('button[data-test="challenge-tap-token"]');
-                        for (let i=0; i <= tokens.length; i++) {
-                            try {
-                                tokens[i].click()
-                                }
-                            catch (err) {
-                                break;
-                                }
-                            }
-                    }''')
-    await page.evaluate('''() => {
-        window.onbeforeunload = null;
-    }''')
+                tokenScript = ''.join(scripts[72:83])
+                await page.evaluate(tokenScript)
+            
     try:
         await page.waitForSelector(finalSelector, {'timeout': 4000})
         await waitForEnabled(finalSelector)
@@ -238,6 +205,10 @@ async def main():
     page = await browser.newPage()
     await page.goto(duoUrl)
 
+    global scripts
+    with open('Assets/scripts.js', 'r') as f:
+        scripts = f.readlines()
+    
     await login() #Login with provided credientials
     await storySelect(maxXp)
     
