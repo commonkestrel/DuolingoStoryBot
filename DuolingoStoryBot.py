@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 from pyppeteer import launch
 import json
 import asyncio
@@ -436,4 +435,3 @@ async def main():
     
 if __name__ == '__main__':
     asyncio.get_event_loop().run_until_complete(main())
->>>>>>> ef0711ea57c2ecb2b2b5d4555bd187dcbb0f5cb6
