@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 //Story selection
 () => {{
     const getElementByXpath = (Xpath) => {{
@@ -166,4 +165,3 @@
         }
     }
 }
->>>>>>> ef0711ea57c2ecb2b2b5d4555bd187dcbb0f5cb6
