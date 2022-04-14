@@ -13,7 +13,6 @@ def getLogin():
         login = json.loads(login)
         
     except FileNotFoundError:
-        loginFile = open(loginPath, 'w')
         
         login = {}
         login['user'] = input('Duolingo Username: ')
@@ -36,10 +35,11 @@ def getLogin():
                 remember = None
         
         if remember:
+            loginFile = open(loginPath, 'w')
             loginJson = json.dumps(login)
             loginFile.write(loginJson)
+            loginFile.close()
         
-        loginFile.close()
         
     return login['user'], login['pass']
         
@@ -216,7 +216,6 @@ async def main():
     
 if __name__ == '__main__':
     asyncio.get_event_loop().run_until_complete(main())
-=======
 from pyppeteer import launch
 import json
 import asyncio
