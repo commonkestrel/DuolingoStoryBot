@@ -2,18 +2,39 @@ from pyppeteer import launch
 import json
 import asyncio
 import time
+from pathlib import Path
+import sys
 
 duoUrl = 'https://www.duolingo.com'
+LINE_UP = '\033[1A'
+LINE_CLEAR = '\x1b[2K'
 
+class progress_bar:
+    def __init__(self, prefix, maximum):
+        self.max = maximum
+        self.prefix = prefix + ' '
+        self.progress = 0
+        print(f'{self.prefix}●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●● 0/{self.max}', end='')
+        
+    def increment(self, amount=1):
+        LINE_CLEAR = '\x1b[2K'
+        self.progress += amount
+        percent = self.progress/self.max
+        print('\r', end=LINE_CLEAR)
+        print(self.prefix, end='')
+        [print('█', end='') for x in range(int(percent*40))]
+        [print('●', end='') for x in range(40-int(percent*40))]
+        print(f' {self.progress}/{self.max}', end='')
+        
 def getLogin():
-    loginPath = 'Assets/login.json'
+    parent = Path(sys.argv[0]).resolve().parent
+    loginPath = Path(parent, 'Assets', 'login.json')
     try:
         loginFile = open(loginPath, 'r')
         login = loginFile.readlines()[0]
         login = json.loads(login)
         
     except FileNotFoundError:
-        
         login = {}
         login['user'] = input('Duolingo Username: ')
         login['pass'] = input('Duolingo Password: ')
@@ -61,25 +82,53 @@ async def login():
     await page.waitForSelector('div[data-test="skill"]')
     
 async def storySelect(maxXp):
-    with open('Assets/scripts.js') as script:
-        selectBase = ''.join(script.readlines()[1:24])
-    await page.goto(duoUrl + '/stories'),
-
+    global scripts
+    
+    selectBase = ''.join(scripts[1:20])
+    await page.goto(duoUrl + '/stories')
+    
+    firstXpath = '//*[@id="root"]/div/div[4]/div/div/div[2]/div/div[1]/div[2]/div[2]/div[1]/div[1]/div/img'
+    await page.waitForXPath(firstXpath)
+    
+    xpScript = ''.join(scripts[84:108])
+    orderedXpList = await page.evaluate(xpScript)
+    
+    totalXp = 0
+    for Set in orderedXpList:
+        for Story in Set:
+            totalXp += Story[0]
+    totalXp = 6000
+    
+    if maxXp == 0:
+        maxXp = totalXp
+        
+    stdout = sys.stdout
+    parent = Path(sys.argv[0]).resolve().parent
+    log = open(Path(parent, 'Assets', 'log.txt'), 'a')
+    
     earnedXp = 0
-    for Set in range(2, 71, 1):
-        for Story in range(2, 6, 1):
+    print()
+    bar = progress_bar('Progress:', maxXp)
+    for Set in range(2, len(orderedXpList)+2, 1):
+        for Story in range(2, len(orderedXpList[Set-2])+2, 1):
             firstXpath = '//*[@id="root"]/div/div[4]/div/div/div[2]/div/div[1]/div[2]/div[2]/div[1]/div[1]/div/img'
+            sys.stdout = log
             await page.waitForXPath(firstXpath)
-            selectScript = selectBase.format(set=Set, story=Story)
-            click = await page.evaluate(selectScript)
+            sys.stdout = stdout
             
-            if click == 0:
+            if orderedXpList[Set-2][Story-2][0] == 0:
                 continue
             
+            selectScript = selectBase.format(set=Set, story=Story)  
+            await page.evaluate(selectScript)
+            
             await storyComplete()
-            earnedXp += click
-            if maxXp != 0 and earnedXp >= maxXp:
-                print(f'Successfully earned {earnedXp}')
+            earnedXp += orderedXpList[Set-2][Story-2][0]
+            
+            bar.increment(orderedXpList[Set-2][Story-2][0])
+            
+            if earnedXp >= maxXp:
+                print(f'Successfully earned {earnedXp} XP')
                 return
             
 async def waitForEnabled(selector, timeout=30):

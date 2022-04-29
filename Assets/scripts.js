@@ -15,13 +15,13 @@
     const xpXpath = xpBase.replace('Set', set).replace('story', story);
     const xpValue = parseInt(getElementByXpath(xpXpath).textContent);
 
-    if (xpValue > 0) {{
         getElementByXpath(storyXpath).click();
         getElementByXpath(storyClick).click();
-        return xpValue
-    }}
-    else {{return xpValue}}
 }}
+
+
+
+
 
 //Match pairs
 () => {{
@@ -80,4 +80,29 @@
             break;
         }
     }
+}
+
+//Get total XP
+() => {
+    let sets = document.querySelector('#root > div > div:nth-of-type(4) > div > div > div:nth-of-type(2) > div > div:first-of-type').getElementsByClassName('_2nLk_');
+    let set_list = [];
+    for (let i=0; i<sets.length; i++) {
+        let stories = sets[i].getElementsByClassName('X4jDx');
+        let story_list = [];
+        for (let i=0; i<stories.length; i++) {
+            let story_divs = stories[i].getElementsByTagName('div');
+            let story_content = [];
+            for (let i=0; i < story_divs.length; i++) {
+                let text_content = story_divs[i].innerText;
+                if (text_content.includes('XP') && !text_content.includes('\n')) {
+                    story_content.push(parseInt(text_content));
+                    break;
+                }
+            }
+            story_content.push(stories[i].querySelector('div[data-test="story-title"]').innerText)
+            story_list.push(story_content);
+        }
+        set_list.push(story_list)
+    }
+    return set_list;
 }
