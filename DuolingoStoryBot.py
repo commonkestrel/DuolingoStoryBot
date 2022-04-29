@@ -97,7 +97,6 @@ async def storySelect(maxXp):
     for Set in orderedXpList:
         for Story in Set:
             totalXp += Story[0]
-    totalXp = 6000
     
     if maxXp == 0:
         maxXp = totalXp
