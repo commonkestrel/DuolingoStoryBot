@@ -1,4 +1,6 @@
 from pyppeteer import launch
+from pyppeteer_stealth import stealth
+import time
 import json
 import asyncio
 import time
@@ -68,7 +70,7 @@ async def login():
     userSelector = 'input[data-test="email-input"]'
     passSelector = 'input[data-test="password-input"]'
     duoSubmit = 'button[data-test="register-button"]'
-    loginSelector = '#root > div > div > span:nth-child(2) > div > div._18cH1 > div._3wkBv > div._3uMJF > button'
+    loginSelector = '#root > div:nth-child(1) > div > div._1RQS6._30_lR._2jDQw._1FMDq > div._18cH1 > div._3wkBv > div._3uMJF > button'
     
     await page.click(loginSelector)
     await page.waitForSelector(userSelector)
@@ -79,7 +81,7 @@ async def login():
     await page.type(passSelector, duoPass)
     
     await page.click(duoSubmit)
-    await page.waitForSelector('div[data-test="skill"]')
+    await page.waitForSelector('div[data-test="skill"]', {'timeout': 60000})
     
 async def storySelect(maxXp):
     global scripts
@@ -87,7 +89,7 @@ async def storySelect(maxXp):
     selectBase = ''.join(scripts[1:20])
     await page.goto(duoUrl + '/stories')
     
-    firstXpath = '//*[@id="root"]/div/div[4]/div/div/div[2]/div/div[1]/div[2]/div[2]/div[1]/div[1]/div/img'
+    firstXpath = '//*[@id="root"]/div[4]/div/div[2]/div/div[1]/div[2]/div[2]/div[1]/div[1]/div/img'
     await page.waitForXPath(firstXpath)
     
     xpScript = ''.join(scripts[84:108])
@@ -110,7 +112,6 @@ async def storySelect(maxXp):
     bar = progress_bar('Progress:', maxXp)
     for Set in range(2, len(orderedXpList)+2, 1):
         for Story in range(2, len(orderedXpList[Set-2])+2, 1):
-            firstXpath = '//*[@id="root"]/div/div[4]/div/div/div[2]/div/div[1]/div[2]/div[2]/div[1]/div[1]/div/img'
             sys.stdout = log
             await page.waitForXPath(firstXpath)
             sys.stdout = stdout
@@ -156,7 +157,7 @@ async def match():
             
 async def storyComplete():
     global scripts
-    continueSelector = '#root > div > div > div > div > div:nth-of-type(3) > div > div > div > button'
+    continueSelector = '#root > div._3W86r._3YKTw > div > div > div._11VOS > div > div > div > button'
     writeExersize = 'Buenos diás, buenos diás, buenos diás, buenos diás, buenos diás, buenos diás, buenos diás.'
     finalSelector = 'button[data-test="stories-player-done"]'
     altFinal = 'button[data-test="stories-player-continue"]'
@@ -166,9 +167,16 @@ async def storyComplete():
     while True:
         try:
             disabledScript = ''.join(scripts[40:44])
-            disabled = await page.evaluate(disabledScript)
-            if disabled != 'true':
-                await page.click(continueSelector)
+            time.sleep(0.5)
+            try:
+                disabled = await page.evaluate(disabledScript)
+                if disabled != 'true':
+                    await page.click(continueSelector)
+            except:
+                await page.waitForSelector(altFinal, {'timeout': 2000})
+                await waitForEnabled(altFinal)
+                await page.click(altFinal)
+            
         except:
             break
         else:
@@ -182,12 +190,12 @@ async def storyComplete():
                 matched = 1
                 while matched == 1:
                     await match()
-                    matched = await waitForEnabled(continueSelector, timeout=3)
-                await page.click(continueSelector)
+                    matched = await waitForEnabled(altFinal, timeout=3)
+                await page.click(altFinal)
                 
                 try:
-                    await waitForEnabled(continueSelector, timeout=4)
-                    await page.click(continueSelector)
+                    await waitForEnabled(altFinal, timeout=4)
+                    await page.click(altFinal)
                     await page.waitForSelector(textSelector, {'timeout': 4000}) #Check if there is a write excersize
                     await page.type(textSelector, writeExersize)
                 except: #Exit main loop if no write excersize
@@ -196,7 +204,7 @@ async def storyComplete():
             elif tokensLength != 0:
                 tokenScript = ''.join(scripts[72:83])
                 await page.evaluate(tokenScript)
-            
+    
     try:
         await page.waitForSelector(finalSelector, {'timeout': 4000})
         await waitForEnabled(finalSelector)
@@ -206,8 +214,14 @@ async def storyComplete():
         await waitForEnabled(altFinal)
         await page.click(altFinal)
     try:
-        await page.waitForXPath('//*[@id="root"]/div/div[4]/div/div/div[2]/div/div[1]/div[2]/div[2]/div[1]/div[1]/div/img', {'timeout': 10000})
+        await page.waitForXPath('//*[@id="root"]/div[4]/div/div[2]/div/div[1]/div[2]/div[2]/div[1]/div[1]/div/img', {'timeout': 10000})
     except:
+        try:
+            await page.waitForSelector(altFinal, {'timeout': 4000})
+            await waitForEnabled(altFinal)
+            await page.click(altFinal)
+        except:
+            pass
         await page.waitForSelector(finalSelector, {'timeout': 4000})
         await waitForEnabled(finalSelector)
         await page.click(finalSelector)
@@ -251,6 +265,7 @@ async def main():
     #Open browser and go to duolingo.com
     browser = await launch(headless=headless, args=['--mute-audio'])
     page = await browser.newPage()
+    await stealth(page)
     await page.goto(duoUrl)
 
     global scripts
